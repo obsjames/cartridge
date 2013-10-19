@@ -21,6 +21,10 @@ from mezzanine.utils.models import AdminThumbMixin, upload_to
 
 from cartridge.shop import fields, managers
 
+import re
+from django.core.validators import RegexValidator
+from stores.fields import CommaSeparatedFloatField
+
 try:
     from _mysql_exceptions import OperationalError
 except ImportError:
@@ -38,6 +42,9 @@ class Priced(models.Model):
     """
 
     unit_price = fields.MoneyField(_("Unit price"))
+
+    tax = fields.MoneyField(_("Item tax"))
+
     sale_id = models.IntegerField(null=True)
     sale_price = fields.MoneyField(_("Sale price"))
     sale_from = models.DateTimeField(_("Sale start"), blank=True, null=True)
@@ -98,6 +105,10 @@ class Product(Displayable, Priced, RichText, AdminThumbMixin):
     image = CharField(_("Image"), max_length=100, blank=True, null=True)
     categories = models.ManyToManyField("Category", blank=True,
                                         verbose_name=_("Product categories"))
+
+    store = models.ForeignKey("Store", related_name="store_products",
+                                        verbose_name=_("Store"))
+
     date_added = models.DateTimeField(_("Date added"), auto_now_add=True,
                                       null=True)
     related_products = models.ManyToManyField("self",
@@ -334,6 +345,64 @@ class Category(Page, RichText):
         "products must match all specified filters, otherwise products "
         "can match any specified filter."))
 
+    store_name = models.ForeignKey("Store", blank=True, null=True,
+                                   verbose_name=('Store'), related_name='store_page_link')
+
+    PAGE_CHOICES = (
+        ('Store', 'Store Page'),
+        ('Beer', (
+                ('Ales', 'Ales'),
+                ('Cider & Fruit Beers', 'Cider & Fruit Beers'),
+                ('Craft Beers', 'Craft Beers'),
+                ('Dark Beers', 'Dark Beers'),
+                ('Hefeweizens', 'Hefeweizens'),
+                ('Lagers', 'Lagers'),
+                ('Light Beers', 'Light Beers'),
+                ('Malt Beverages', 'Malt Beverages'),
+                ('Beer', 'Beer'),
+            )
+        ),
+        ('Wine', (
+                ('Red Wine', 'Red Wine'),
+                ('White Wine', 'White Wine'),
+                ('Sparkling Wine', 'Sparkling Wine'),
+                ('Rose', 'Rose'),
+                ('Wine', 'Wine'),
+            )
+        ),
+        ('Spirits', (
+                ('Bourbon & Rye', 'Bourbon & Rye'),
+                ('Brandy & Cognac', 'Brandy & Cognac'),
+                ('Gin', 'Gin'),
+                ('Liqueurs', 'Liqueurs'),
+                ('Rum', 'Rum'),
+                ('Tequila', 'Tequila'),
+                ('Vermouth & Bitters', 'Vermouth & Bitters'),
+                ('Vodka', 'Vodka'),
+                ('Whiskey & Scotch', 'Whiskey & Scotch'),
+                ('Spirits', 'Spirits'),
+            )
+        ),
+	('Mixers & Accessories', (
+                ('Cigarettes', 'Cigarettes'),
+                ('Condoms', 'Condoms'),
+		('Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
+		('Energy & Sports Drinks', 'Energy & Sports Drinks'),
+		('Fruit & Garnish', 'Fruit & Garnish'),
+		('Juice', 'Juice'),
+		('Mixers', 'Mixers'),
+		('Snacks', 'Snacks'),
+		('Soda', 'Soda'),
+		('Water', 'Water'),
+		('Mixers & Accessories', 'Mixers & Accessories'),
+	    )
+	)
+    )
+
+    page_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
+                                 verbose_name=_("Page Type"),
+                                 help_text="Select whether this is a store page or a particular liquor page.")
+
     class Meta:
         verbose_name = _("Product category")
         verbose_name_plural = _("Product categories")
@@ -398,14 +467,17 @@ class Order(models.Model):
     billing_detail_country = CharField(_("Country"), max_length=100)
     billing_detail_phone = CharField(_("Phone"), max_length=20)
     billing_detail_email = models.EmailField(_("Email"))
-    shipping_detail_first_name = CharField(_("First name"), max_length=100)
-    shipping_detail_last_name = CharField(_("Last name"), max_length=100)
-    shipping_detail_street = CharField(_("Street"), max_length=100)
-    shipping_detail_city = CharField(_("City/Suburb"), max_length=100)
-    shipping_detail_state = CharField(_("State/Region"), max_length=100)
-    shipping_detail_postcode = CharField(_("Zip/Postcode"), max_length=10)
-    shipping_detail_country = CharField(_("Country"), max_length=100)
-    shipping_detail_phone = CharField(_("Phone"), max_length=20)
+#    shipping_detail_first_name = CharField(_("First name"), max_length=100)
+#    shipping_detail_last_name = CharField(_("Last name"), max_length=100)
+#    shipping_detail_street = CharField(_("Street"), max_length=100)
+#    shipping_detail_city = CharField(_("City/Suburb"), max_length=100)
+#    shipping_detail_state = CharField(_("State/Region"), max_length=100)
+#    shipping_detail_postcode = CharField(_("Zip/Postcode"), max_length=10)
+#    shipping_detail_country = CharField(_("Country"), max_length=100)
+#    shipping_detail_phone = CharField(_("Phone"), max_length=20)
+
+    shipping_detail_apartment = CharField(_("Apartment number"), max_length="10", blank=True, null=True)
+
     additional_instructions = models.TextField(_("Additional instructions"),
                                                blank=True)
     time = models.DateTimeField(_("Time"), auto_now_add=True, null=True)
@@ -479,10 +551,13 @@ class Order(models.Model):
         delete the cart.
         """
         self.save()  # Save the transaction ID.
-        discount_code = request.session.get('discount_code')
-        for field in ("order",) + self.session_fields:
+        for field in self.session_fields:
             if field in request.session:
                 del request.session[field]
+        try:
+            del request.session["order"]
+        except KeyError:
+            pass
         for item in request.cart:
             try:
                 variation = ProductVariation.objects.get(sku=item.sku)
@@ -491,8 +566,9 @@ class Order(models.Model):
             else:
                 variation.update_stock(item.quantity * -1)
                 variation.product.actions.purchased()
-        if discount_code:
-            DiscountCode.objects.active().filter(code=discount_code).update(
+        code = request.session.get('discount_code')
+        if code:
+            DiscountCode.objects.active().filter(code=code).update(
                 uses_remaining=F('uses_remaining') - 1)
         request.cart.delete()
 
@@ -547,6 +623,7 @@ class Cart(models.Model):
         if created:
             item.description = unicode(variation)
             item.unit_price = variation.price()
+            item.tax = variation.tax
             item.url = variation.product.get_absolute_url()
             image = variation.image
             if image is not None:
@@ -610,6 +687,12 @@ class Cart(models.Model):
                 total += discount.calculate(item.unit_price) * item.quantity
         return total
 
+    def total_tax(self):
+        """
+        Template helper function - sum of all costs of item quantities.
+        """
+        return sum([item.total_tax for item in self])
+
 
 class SelectedProduct(models.Model):
     """
@@ -621,6 +704,8 @@ class SelectedProduct(models.Model):
     quantity = models.IntegerField(_("Quantity"), default=0)
     unit_price = fields.MoneyField(_("Unit price"), default=Decimal("0"))
     total_price = fields.MoneyField(_("Total price"), default=Decimal("0"))
+    tax = fields.MoneyField(_("Item tax"), default=Decimal("0"))
+    total_tax = fields.MoneyField(_("Total tax"), default=Decimal("0"))
 
     class Meta:
         abstract = True
@@ -636,6 +721,7 @@ class SelectedProduct(models.Model):
         """
         if not self.id or self.quantity > 0:
             self.total_price = self.unit_price * self.quantity
+            self.total_tax = self.tax * self.quantity
             super(SelectedProduct, self).save(*args, **kwargs)
         else:
             self.delete()
@@ -845,3 +931,142 @@ class DiscountCode(Discount):
     class Meta:
         verbose_name = _("Discount code")
         verbose_name_plural = _("Discount codes")
+
+
+class Store(models.Model):
+    """
+    Container model for stores.
+    """
+    name = models.CharField(max_length=50, verbose_name=_("Store name"))
+    delivery_zone = CommaSeparatedFloatField(max_length=200,
+                                                    verbose_name=_("Delivery polygon for store"),
+                                                    help_text="Enter in form (x,y), (u,v), ..., where x, y, u and v are decimal numbers.")
+    contact_number = models.CharField(max_length=12,
+                                      validators=[RegexValidator(regex='^.{12}$',
+                                      message='Must be correct format: +15555555555',
+                                      code='nomatch')])
+    address = models.CharField(max_length=100,
+                               verbose_name=_("Physical address of store"))
+    lat = models.FloatField(verbose_name=_("Store latitude coordinate"), 
+			    help_text="Latitude and longitude coordinates are automatically added. Only edit manually in case of a problem.",
+			    null=True, blank=True)
+    lon = models.FloatField(verbose_name=_("Store latitude coordinate"), 
+			    help_text="See comment for latitude coordinate.", null=True, blank=True)
+    email = models.EmailField(verbose_name=_("Store email address"))
+#    products = models.ManyToManyField("Product", through='Stock', related_name='shops', verbose_name=_("Store products"))
+
+    delivery_min = models.DecimalField(max_digits=5, decimal_places=2,
+                                       verbose_name=_("Store delivery minimum"),
+                                       help_text="30.00 for example.")
+
+    STORE_CHOICES = (
+        ('Beer', 'Beer'),
+        ('Wine', 'Wine'),
+        ('Spirits', 'Spirits'),
+        ('Mixers & Accessories', 'Mixers & Accessories'),
+    )
+
+    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES,
+                                    verbose_name=_("Liqour stocked"),
+                                    help_text="By NY State law, a store can only sell beer or spirits and wine.")
+    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
+                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
+                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
+
+    open_for_business = models.BooleanField(default=True,
+                                                verbose_name=_("Is the store currently delivering?"),
+                                                help_text="Uncheck if the store is not deliverying currently")
+
+    stripe_api_key = models.CharField(max_length=100, null=True, blank=True,
+                                      verbose_name=_("Store Stripe access token"),
+                                      help_text="Available in email - check against stripe_user_id in Stripe dashboard.")
+    stripe_pub_key = models.CharField(max_length=100, null=True, blank=True,
+                                      verbose_name=_("Store Stripe publishable key"),
+                                      help_text="Available in email - check against stripe_user_id in Stripe dashboard.")
+
+    def __unicode__(self):
+        return self.name
+
+
+class Stock(models.Model):
+    store = models.ForeignKey("Store", related_name='store_stock', verbose_name=_("Store"))
+
+    PAGE_CHOICES = (
+        ('Beer', (
+                ('Ales', 'Ales'),
+                ('Cider & Fruit Beers', 'Cider & Fruit Beers'),
+                ('Craft Beers', 'Craft Beers'),
+                ('Dark Beers', 'Dark Beers'),
+                ('Hefeweizens', 'Hefeweizens'),
+                ('Lagers', 'Lagers'),
+                ('Light Beers', 'Light Beers'),
+                ('Malt Beverages', 'Malt Beverages'),
+            )
+        ),
+        ('Wine', (
+                ('Red Wine', 'Red Wine'),
+                ('White Wine', 'White Wine'),
+                ('Sparkling Wine', 'Sparkling Wine'),
+                ('Rose', 'Rose'),
+            )
+        ),
+        ('Spirits', (
+                ('Bourbon & Rye', 'Bourbon & Rye'),
+                ('Brandy & Cognac', 'Brandy & Cognac'),
+                ('Gin', 'Gin'),
+                ('Liqueurs', 'Liqueurs'),
+                ('Rum', 'Rum'),
+                ('Tequila', 'Tequila'),
+                ('Vermouth & Bitters', 'Vermouth & Bitters'),
+                ('Vodka', 'Vodka'),
+                ('Whiskey & Scotch', 'Whiskey & Scotch'),
+            )
+        ),
+        ('Mixers & Accessories', (
+                ('Cigarettes', 'Cigarettes'),
+                ('Condoms', 'Condoms'),
+                ('Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
+                ('Energy & Sports Drinks', 'Energy & Sports Drinks'),
+                ('Fruit & Garnish', 'Fruit & Garnish'),
+                ('Juice', 'Juice'),
+                ('Mixers', 'Mixers'),
+                ('Snacks', 'Snacks'),
+                ('Soda', 'Soda'),
+                ('Water', 'Water'),
+            )
+        )
+    )
+
+
+    liquor_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
+                                   verbose_name=_("Liquor Type"),
+                                   help_text="Please list ALL liquor types available at this store.")
+
+    def __unicode__(self):
+#        return u"%s %s" % (self.store, self.product)
+        return u"%s Stock" % (self.store)
+
+class OpeningHour(models.Model):
+
+    WEEKDAYS = [
+	(0, _("Monday")),
+	(1, _("Tuesday")),
+	(2, _("Wednesday")),
+	(3, _("Thursday")),
+	(4, _("Friday")),
+	(5, _("Saturday")),
+	(6, _("Sunday")),
+    ]
+
+    store = models.ForeignKey("Store", related_name='store_opening_hour', verbose_name=_("Store"))
+    weekday = models.IntegerField(choices=WEEKDAYS)
+    from_hour = models.TimeField()
+    to_hour = models.TimeField()
+
+class CustomerLocations(models.Model):
+    location = models.CharField(max_length=200)
+    address = models.CharField(max_length=100)
+
+    def __unicode__(self):
+        return self.name
+

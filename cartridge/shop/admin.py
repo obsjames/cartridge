@@ -44,6 +44,8 @@ from cartridge.shop.models import Category, Product, ProductImage
 from cartridge.shop.models import ProductVariation, ProductOption, Order
 from cartridge.shop.models import OrderItem, Sale, DiscountCode
 
+from cartridge.shop.models import Store, Stock, OpeningHour
+
 
 # Lists of field names.
 option_fields = [f.name for f in ProductVariation.option_fields()]
@@ -59,7 +61,7 @@ shipping_fields = _flds("shipping_detail")
 # Categories fieldsets are extended from Page fieldsets, since
 # categories are a Mezzanine Page type.
 category_fieldsets = deepcopy(PageAdmin.fieldsets)
-category_fieldsets[0][1]["fields"][3:3] = ["content", "products"]
+category_fieldsets[0][1]["fields"][3:3] = ["page_type", "store_name", "content", "products"]
 category_fieldsets += ((_("Product filters"), {
     "fields": ("sale", ("price_min", "price_max"), "combined"),
     "classes": ("collapse-closed",)},),)
@@ -85,7 +87,7 @@ class CategoryAdmin(PageAdmin):
 # If variations aren't used, the variation inline should always
 # provide a single inline for managing the single variation per
 # product.
-variation_fields = ["sku", "num_in_stock", "unit_price",
+variation_fields = ["sku", "num_in_stock", "unit_price", "tax",
                     "sale_price", "sale_from", "sale_to", "image"]
 if settings.SHOP_USE_VARIATIONS:
     variation_fields.insert(1, "default")
@@ -117,13 +119,13 @@ class ProductImageAdmin(TabularDynamicInlineAdmin):
 
 product_fieldsets = deepcopy(DisplayableAdmin.fieldsets)
 product_fieldsets[0][1]["fields"][1] = ("status", "available")
-product_fieldsets[0][1]["fields"].extend(["content", "categories"])
+product_fieldsets[0][1]["fields"].extend(["store", "content", "categories"])
 product_fieldsets = list(product_fieldsets)
 product_fieldsets.append((_("Other products"), {
     "classes": ("collapse-closed",),
     "fields": ("related_products", "upsell_products")}))
 
-product_list_display = ["admin_thumb", "title", "status", "available",
+product_list_display = ["admin_thumb", "title", "store", "status", "available",
                         "admin_link"]
 product_list_editable = ["status", "available"]
 
@@ -134,7 +136,7 @@ if settings.SHOP_USE_VARIATIONS:
     product_fieldsets.insert(1, (_("Create new variations"),
         {"classes": ("create-variations",), "fields": option_fields}))
 else:
-    extra_list_fields = ["sku", "unit_price", "sale_price", "num_in_stock"]
+    extra_list_fields = ["sku", "unit_price", "tax", "sale_price", "num_in_stock"]
     product_list_display[4:4] = extra_list_fields
     product_list_editable.extend(extra_list_fields)
 
@@ -309,6 +311,29 @@ class DiscountCodeAdmin(admin.ModelAdmin):
             {"fields": (("valid_from", "valid_to", "uses_remaining"),)}),
     )
 
+class StockInline(admin.TabularInline):
+    model = Stock
+    extra = 13
+
+class OpeningHourInline(admin.TabularInline):
+    model = OpeningHour
+    extra = 7
+
+class StoreAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (None,               {'fields': ['name']}),
+        ('Open For Business', {'fields': ['open_for_business']}),
+        ('Contact Details', {'fields': ['address', 'contact_number', 'email']}),
+        ('Delivery Details', {'fields': ['delivery_zone', 'delivery_min', 'lat', 'lon']}),
+        ('Beverages Served Here', {'fields': ['store_type_1', 'store_type_2']}),
+        ('Payment Details', {'fields': ['stripe_api_key', 'stripe_pub_key']}),
+    ]
+    inlines = [OpeningHourInline, StockInline]
+    list_display = ('name', 'address', 'contact_number', 'email', 'open_for_business', 'store_type_1', 'store_type_2')
+
+    search_fields = ['name', 'store_type_1', 'store_type_2']
+
+admin.site.register(Store, StoreAdmin)
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Product, ProductAdmin)

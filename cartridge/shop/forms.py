@@ -21,6 +21,7 @@ from cartridge.shop.models import Product, ProductOption, ProductVariation
 from cartridge.shop.models import Cart, CartItem, Order, DiscountCode
 from cartridge.shop.utils import make_choices, set_locale, set_shipping
 
+from django.forms.widgets import TextInput, Select
 
 ADD_PRODUCT_ERRORS = {
     "invalid_options": _("The selected options are currently unavailable."),
@@ -248,13 +249,6 @@ class DiscountForm(forms.ModelForm):
         Validate the discount code if given, and attach the discount
         instance to the form.
         """
-        # Test session behaves weirdly when we try and remove applied
-        # discounts when testing multiple discounts, so we allow multiple
-        # discounts when running tests.
-        testing = getattr(settings, "TESTING", False)
-        if "discount_code" in self._request.session and not testing:
-            # Already applied
-            return ""
         code = self.cleaned_data.get("discount_code", "")
         cart = self._request.cart
         if code:
@@ -280,6 +274,25 @@ class DiscountForm(forms.ModelForm):
             self._request.session["discount_total"] = total
 
 
+class SensitiveTextInput(TextInput):
+    def build_attrs(self, extra_attrs=None, **kwargs):
+        attrs = super(SensitiveTextInput, self).build_attrs(extra_attrs, **kwargs)
+        if 'name' in attrs:
+            attrs['data-stripe'] = attrs['name']
+            del attrs['name']
+            del attrs['id']
+        return attrs
+
+class SensitiveSelect(Select):
+    def build_attrs(self, extra_attrs=None, **kwargs):
+        attrs = super(SensitiveSelect, self).build_attrs(extra_attrs, **kwargs)
+        if 'name' in attrs:
+            attrs['data-stripe'] = attrs['name']
+            del attrs['name']
+            del attrs['id']
+        return attrs
+
+
 class OrderForm(FormsetForm, DiscountForm):
     """
     Main Form for the checkout process - ModelForm for the Order Model
@@ -292,17 +305,28 @@ class OrderForm(FormsetForm, DiscountForm):
         label=_("My delivery details are the same as my billing details"))
     remember = forms.BooleanField(required=False, initial=True,
         label=_("Remember my address for next time"))
-    card_name = forms.CharField(label=_("Cardholder name"))
-    card_type = forms.ChoiceField(label=_("Card type"),
-        widget=forms.RadioSelect,
-        choices=make_choices(settings.SHOP_CARD_TYPES))
-    card_number = forms.CharField(label=_("Card number"))
-    card_expiry_month = forms.ChoiceField(
+    card_name = forms.CharField(label=_("Cardholder name"),
+	widget=SensitiveTextInput, required=False,
+	help_text=_("Please enter your name as it appears on your card"))
+#    card_type = forms.ChoiceField(label=_("Card type"),
+#        widget=forms.RadioSelect,
+#        choices=make_choices(settings.SHOP_CARD_TYPES))
+    card_number = forms.CharField(label=_("Card number"),
+	widget=SensitiveTextInput, required=False)
+    card_expiry_month = forms.ChoiceField(label=_("Card expiry month"),
+        widget=SensitiveSelect,
         initial="%02d" % date.today().month,
-        choices=make_choices(["%02d" % i for i in range(1, 13)]))
-    card_expiry_year = forms.ChoiceField()
-    card_ccv = forms.CharField(label=_("CCV"), help_text=_("A security code, "
-        "usually the last 3 digits found on the back of your card."))
+        choices=make_choices(["%02d" % i for i in range(1, 13)]), required=False)
+    card_expiry_year = forms.ChoiceField(label=_("Card expiry year"),
+        widget=SensitiveSelect, required=False)
+    card_ccv = forms.CharField(label=_("CVC"), help_text=_("A security code, "
+        "usually the last 3 digits found on the back of your card"),
+	widget=SensitiveTextInput, required=False)  
+
+    confirm_age = forms.BooleanField(label="I certify that I am 21 or older, and that I will present identification at the time of delivery", initial=False)
+
+#    def build_attrs(self, extra_attrs=None, **kwargs):
+#        attrs = super()
 
     class Meta:
         model = Order
@@ -339,14 +363,10 @@ class OrderForm(FormsetForm, DiscountForm):
         super(OrderForm, self).__init__(request, data=data, initial=initial)
         self._checkout_errors = errors
 
-        # Hide discount code field if discount already applied,
-        # discount field shouldn't appear in checkout, or if no
-        # discount codes are active.
+        # Hide Discount Code field if no codes are active.
         settings.use_editable()
-        no_discounts = not DiscountCode.objects.active().exists()
-        discount_applied = "discount_code" in getattr(request, "session", {})
-        discount_in_checkout = settings.SHOP_DISCOUNT_FIELD_IN_CHECKOUT
-        if discount_applied or no_discounts or not discount_in_checkout:
+        no_discounts = DiscountCode.objects.active().count() == 0
+        if no_discounts or not settings.SHOP_DISCOUNT_FIELD_IN_CHECKOUT:
             self.fields["discount_code"].widget = forms.HiddenInput()
 
         # Determine which sets of fields to hide for each checkout step.
