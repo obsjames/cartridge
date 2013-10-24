@@ -323,7 +323,7 @@ class OrderForm(FormsetForm, DiscountForm):
         "usually the last 3 digits found on the back of your card"),
 	widget=SensitiveTextInput, required=False)  
 
-    confirm_age = forms.BooleanField(label="I certify that I am 21 or older, and that I will present identification at the time of delivery", initial=False)
+    confirm_age = forms.BooleanField(label="I certify that I am over 21, and that I will present ID at the time of delivery.", initial=False)
 
 #    def build_attrs(self, extra_attrs=None, **kwargs):
 #        attrs = super()
