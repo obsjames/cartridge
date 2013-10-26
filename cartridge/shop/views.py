@@ -165,12 +165,14 @@ def cart(request, template="shop/cart.html"):
     cart_formset = CartItemFormSet(instance=request.cart)
     discount_form = DiscountForm(request, request.POST or None)
 
+    tax_handler(request, None)
+
     if request.method == 'POST':
         tipform = TipForm(request.POST)
         if tipform.is_valid():
             tip = tipform.cleaned_data['tip']
             billship_handler(request, tip)
-    	    tax_handler(request, None)
+#    	    tax_handler(request, None)
             request.session['tip fixed'] = True
     else:
         tipform = TipForm()
