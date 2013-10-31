@@ -286,11 +286,11 @@ def checkout_steps(request):
             # such as the credit card fields so that they're never
             # stored anywhere.
             request.session["order"] = dict(form.cleaned_data)
-#            sensitive_card_fields = ("card_number", "card_expiry_month",
-#                                     "card_expiry_year", "card_ccv")
-#            for field in sensitive_card_fields:
-#                if field in request.session["order"]:
-#                    del request.session["order"][field]
+            sensitive_card_fields = ("card_number", "card_expiry_month",
+                                     "card_expiry_year", "card_ccv")
+            for field in sensitive_card_fields:
+                if field in request.session["order"]:
+                    del request.session["order"][field]
 
             # FIRST CHECKOUT STEP - handle shipping and discount code.
             if step == checkout.CHECKOUT_STEP_FIRST:
@@ -415,20 +415,21 @@ def complete(request, template="shop/complete.html"):
     for i, item in enumerate(items):
         setattr(items[i], "name", names[item.sku])
 
-    if 'stores' in request.session:
+    settings.use_editable()
+    if settings.USE_TWILIO:
 
-#        account_sid = "ACa39f639de53fffa289d44917d24b2a60"
-#        auth_token = "f3ba20189c9e1dcc2a1059f000caba9c"
-#        client = TwilioRestClient(account_sid, auth_token)
-# 
-#        store = request.session['stores']
-#        contact_number = store[0].contact_number
-#       name = store[0].name
-#
-#        call = client.calls.create(to=contact_number,  # Any phone number
-#                               from_="+16466062502", # Must be a valid Twilio number
+        account_sid = settings.TWILIO_ACCOUNT_SID 
+        auth_token = settings.TWILIO_AUTH_TOKEN
+        client = TwilioRestClient(account_sid, auth_token)
+ 
+        store = request.session['stores']
+        contact_number = store[0].contact_number
+        name = store[0].name
+
+        call = client.calls.create(to=contact_number,  # Any phone number
+                               from_=settings.TWILIO_NUMBER, # Must be a valid Twilio number
 #                              url="http://twimlets.com/echo?Twiml=%3CResponse%3E%3CSay%3EHi+there%2C+this+is+monkey+delivers+calling+to+notify+you+that+you+have+received+an+order%21+Please+confirm+the+order+by+clicking+the+link+in+the+email+we+just+sent+you.+Thank+you!%3C%2FSay%3E%3C%2FResponse%3E")
-#                               url="http://monkeydelivers.com/stores/order_call/order_call.xml")
+                               url="http://monkeydelivers.com/stores/order_call/order_call.xml")
 
         del request.session['stores']
     if 'cart loaded' in request.session:
