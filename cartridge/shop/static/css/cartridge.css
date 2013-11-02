@@ -86,7 +86,7 @@
 
 
 /* Checkout confirmation */
-.confirmation {width:360px !important; float:left; margin-right:20px;}
+.confirmation {width:40% !important; float:left; margin-right:20px;}
 .confirmation legend {text-indent:50px !important;}
 .confirmation ul {margin:20px;}
 .confirmation li {margin:5px 0; color:#999;}
