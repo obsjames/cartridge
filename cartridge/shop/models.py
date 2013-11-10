@@ -106,8 +106,59 @@ class Product(Displayable, Priced, RichText, AdminThumbMixin):
     categories = models.ManyToManyField("Category", blank=True,
                                         verbose_name=_("Product categories"))
 
+
     store = models.ForeignKey("Store", related_name="store_products",
                                         verbose_name=_("Store"))
+
+    LIQUOR_CHOICES = (
+        ('Beer', (
+                ('B Ales', 'Ales'),
+                ('B Cider & Fruit Beers', 'Cider & Fruit Beers'),
+                ('B Craft Beers', 'Craft Beers'),
+                ('B Dark Beers', 'Dark Beers'),
+                ('B Hefeweizens', 'Hefeweizens'),
+                ('B Lagers', 'Lagers'),
+                ('B Light Beers', 'Light Beers'),
+                ('B Malt Beverages', 'Malt Beverages'),
+            )
+        ),
+        ('Wine', (
+                ('W Red Wine', 'Red Wine'),
+                ('W White Wine', 'White Wine'),
+                ('W Sparkling Wine', 'Sparkling Wine'),
+                ('W Rose', 'Rose'),
+            )
+        ),
+        ('Spirits', (
+                ('S Bourbon & Rye', 'Bourbon & Rye'),
+                ('S Brandy & Cognac', 'Brandy & Cognac'),
+                ('S Gin', 'Gin'),
+                ('S Liqueurs', 'Liqueurs'),
+                ('S Rum', 'Rum'),
+                ('S Tequila', 'Tequila'),
+                ('S Vermouth & Bitters', 'Vermouth & Bitters'),
+                ('S Vodka', 'Vodka'),
+                ('S Whiskey & Scotch', 'Whiskey & Scotch'),
+            )
+        ),
+        ('Mixers & Accessories', (
+                ('M Cigarettes', 'Cigarettes'),
+                ('M Condoms', 'Condoms'),
+                ('M Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
+                ('M Energy & Sports Drinks', 'Energy & Sports Drinks'),
+                ('M Fruit & Garnish', 'Fruit & Garnish'),
+                ('M Juice', 'Juice'),
+                ('M Mixers', 'Mixers'),
+                ('M Snacks', 'Snacks'),
+                ('M Soda', 'Soda'),
+                ('M Water', 'Water'),
+            )
+        )
+    )
+
+    product_type = models.CharField(max_length=30, choices=LIQUOR_CHOICES,
+                                   verbose_name=_("Product Type"),
+                                   help_text="What type of product is this?")
 
     date_added = models.DateTimeField(_("Date added"), auto_now_add=True,
                                       null=True)
@@ -345,63 +396,81 @@ class Category(Page, RichText):
         "products must match all specified filters, otherwise products "
         "can match any specified filter."))
 
-    store_name = models.ForeignKey("Store", blank=True, null=True,
-                                   verbose_name=('Store'), related_name='store_page_link')
+#    store_name = models.ForeignKey("Store", blank=True, null=True,
+#                                   verbose_name=('Store'), related_name='store_page_link')
 
-    PAGE_CHOICES = (
-        ('Store', 'Store Page'),
-        ('Beer', (
-                ('Ales', 'Ales'),
-                ('Cider & Fruit Beers', 'Cider & Fruit Beers'),
-                ('Craft Beers', 'Craft Beers'),
-                ('Dark Beers', 'Dark Beers'),
-                ('Hefeweizens', 'Hefeweizens'),
-                ('Lagers', 'Lagers'),
-                ('Light Beers', 'Light Beers'),
-                ('Malt Beverages', 'Malt Beverages'),
-                ('Beer', 'Beer'),
-            )
-        ),
-        ('Wine', (
-                ('Red Wine', 'Red Wine'),
-                ('White Wine', 'White Wine'),
-                ('Sparkling Wine', 'Sparkling Wine'),
-                ('Rose', 'Rose'),
-                ('Wine', 'Wine'),
-            )
-        ),
-        ('Spirits', (
-                ('Bourbon & Rye', 'Bourbon & Rye'),
-                ('Brandy & Cognac', 'Brandy & Cognac'),
-                ('Gin', 'Gin'),
-                ('Liqueurs', 'Liqueurs'),
-                ('Rum', 'Rum'),
-                ('Tequila', 'Tequila'),
-                ('Vermouth & Bitters', 'Vermouth & Bitters'),
-                ('Vodka', 'Vodka'),
-                ('Whiskey & Scotch', 'Whiskey & Scotch'),
-                ('Spirits', 'Spirits'),
-            )
-        ),
-	('Mixers & Accessories', (
-                ('Cigarettes', 'Cigarettes'),
-                ('Condoms', 'Condoms'),
-		('Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
-		('Energy & Sports Drinks', 'Energy & Sports Drinks'),
-		('Fruit & Garnish', 'Fruit & Garnish'),
-		('Juice', 'Juice'),
-		('Mixers', 'Mixers'),
-		('Snacks', 'Snacks'),
-		('Soda', 'Soda'),
-		('Water', 'Water'),
-		('Mixers & Accessories', 'Mixers & Accessories'),
-	    )
-	)
-    )
+#    PAGE_CHOICES = (
+#        ('Store', 'Store Page'),
+#        ('Beer', (
+#                ('Ales', 'Ales'),
+#                ('Cider & Fruit Beers', 'Cider & Fruit Beers'),
+#                ('Craft Beers', 'Craft Beers'),
+#                ('Dark Beers', 'Dark Beers'),
+#                ('Hefeweizens', 'Hefeweizens'),
+#                ('Lagers', 'Lagers'),
+#                ('Light Beers', 'Light Beers'),
+#                ('Malt Beverages', 'Malt Beverages'),
+#                ('Beer', 'Beer'),
+#            )
+#        ),
+#        ('Wine', (
+#                ('Red Wine', 'Red Wine'),
+#                ('White Wine', 'White Wine'),
+#                ('Sparkling Wine', 'Sparkling Wine'),
+#                ('Rose', 'Rose'),
+#                ('Wine', 'Wine'),
+#            )
+#        ),
+#        ('Spirits', (
+#                ('Bourbon & Rye', 'Bourbon & Rye'),
+#                ('Brandy & Cognac', 'Brandy & Cognac'),
+#                ('Gin', 'Gin'),
+#                ('Liqueurs', 'Liqueurs'),
+#                ('Rum', 'Rum'),
+#                ('Tequila', 'Tequila'),
+#                ('Vermouth & Bitters', 'Vermouth & Bitters'),
+#                ('Vodka', 'Vodka'),
+#                ('Whiskey & Scotch', 'Whiskey & Scotch'),
+#                ('Spirits', 'Spirits'),
+#            )
+#        ),
+#	('Mixers & Accessories', (
+#                ('Cigarettes', 'Cigarettes'),
+#                ('Condoms', 'Condoms'),
+#		('Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
+#		('Energy & Sports Drinks', 'Energy & Sports Drinks'),
+#		('Fruit & Garnish', 'Fruit & Garnish'),
+#		('Juice', 'Juice'),
+#		('Mixers', 'Mixers'),
+#		('Snacks', 'Snacks'),
+#		('Soda', 'Soda'),
+#		('Water', 'Water'),
+#		('Mixers & Accessories', 'Mixers & Accessories'),
+#	    )
+#	)
+#    )
+#
+#    page_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
+#                                 verbose_name=_("Page Type"),
+#                                 help_text="Select whether this is a store page or a particular liquor page.")
 
-    page_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
-                                 verbose_name=_("Page Type"),
-                                 help_text="Select whether this is a store page or a particular liquor page.")
+#    delivery_min = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+#                                       verbose_name=_("Store delivery minimum"),
+#                                       help_text="30.00 for example.")
+#    STORE_CHOICES = (
+#        ('Beer', 'Beer'),
+#        ('Wine', 'Wine'),
+#        ('Spirits', 'Spirits'),
+#        ('Mixers & Accessories', 'Mixers & Accessories'),
+#    )
+
+#    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES,
+#                                    verbose_name=_("Liqour stocked"),
+#                                    help_text="By NY State law, a store can only sell beer or spirits and wine.")
+#    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
+#                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
+#                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
+
 
     class Meta:
         verbose_name = _("Product category")
@@ -460,11 +529,11 @@ class Order(models.Model):
 
     billing_detail_first_name = CharField(_("First name"), max_length=100)
     billing_detail_last_name = CharField(_("Last name"), max_length=100)
-    billing_detail_street = CharField(_("Street"), max_length=100)
-    billing_detail_city = CharField(_("City/Suburb"), max_length=100)
-    billing_detail_state = CharField(_("State/Region"), max_length=100)
-    billing_detail_postcode = CharField(_("Zip/Postcode"), max_length=10)
-    billing_detail_country = CharField(_("Country"), max_length=100)
+#    billing_detail_street = CharField(_("Street"), max_length=100)
+#    billing_detail_city = CharField(_("City/Suburb"), max_length=100)
+#    billing_detail_state = CharField(_("State/Region"), max_length=100)
+#    billing_detail_postcode = CharField(_("Zip/Postcode"), max_length=10)
+#    billing_detail_country = CharField(_("Country"), max_length=100)
     billing_detail_phone = CharField(_("Phone"), max_length=20)
     billing_detail_email = models.EmailField(_("Email"))
 #    shipping_detail_first_name = CharField(_("First name"), max_length=100)
@@ -948,7 +1017,7 @@ class Store(models.Model):
     address = models.CharField(max_length=100,
                                verbose_name=_("Physical address of store"))
     lat = models.FloatField(verbose_name=_("Store latitude coordinate"), 
-			    help_text="Latitude and longitude coordinates are automatically added. Only edit manually in case of a problem.",
+			    help_text="Latitude and longitude coordinates are automatically added. Only edit manually in case of an error.",
 			    null=True, blank=True)
     lon = models.FloatField(verbose_name=_("Store latitude coordinate"), 
 			    help_text="See comment for latitude coordinate.", null=True, blank=True)
@@ -959,23 +1028,24 @@ class Store(models.Model):
                                        verbose_name=_("Store delivery minimum"),
                                        help_text="30.00 for example.")
 
-    STORE_CHOICES = (
-        ('Beer', 'Beer'),
-        ('Wine', 'Wine'),
-        ('Spirits', 'Spirits'),
-        ('Mixers & Accessories', 'Mixers & Accessories'),
-    )
-
-    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES,
-                                    verbose_name=_("Liqour stocked"),
-                                    help_text="By NY State law, a store can only sell beer or spirits and wine.")
-    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
-                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
-                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
+#    STORE_CHOICES = (
+#        ('Beer', 'Beer'),
+#        ('Wine', 'Wine'),
+#        ('Spirits', 'Spirits'),
+#        ('Mixers & Accessories', 'Mixers & Accessories'),
+#    )
+#
+#    # May not need this:
+#    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES,
+#                                    verbose_name=_("Liqour stocked"),
+#                                    help_text="By NY State law, a store can only sell beer or spirits and wine.")
+#    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
+#                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
+#                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
 
     open_for_business = models.BooleanField(default=True,
                                                 verbose_name=_("Is the store currently delivering?"),
-                                                help_text="Uncheck if the store is not deliverying currently")
+                                                help_text="Uncheck if the store is not currently deliverying")
 
     stripe_api_key = models.CharField(max_length=100, null=True, blank=True,
                                       verbose_name=_("Store Stripe access token"),
@@ -988,63 +1058,63 @@ class Store(models.Model):
         return self.name
 
 
-class Stock(models.Model):
-    store = models.ForeignKey("Store", related_name='store_stock', verbose_name=_("Store"))
-
-    PAGE_CHOICES = (
-        ('Beer', (
-                ('Ales', 'Ales'),
-                ('Cider & Fruit Beers', 'Cider & Fruit Beers'),
-                ('Craft Beers', 'Craft Beers'),
-                ('Dark Beers', 'Dark Beers'),
-                ('Hefeweizens', 'Hefeweizens'),
-                ('Lagers', 'Lagers'),
-                ('Light Beers', 'Light Beers'),
-                ('Malt Beverages', 'Malt Beverages'),
-            )
-        ),
-        ('Wine', (
-                ('Red Wine', 'Red Wine'),
-                ('White Wine', 'White Wine'),
-                ('Sparkling Wine', 'Sparkling Wine'),
-                ('Rose', 'Rose'),
-            )
-        ),
-        ('Spirits', (
-                ('Bourbon & Rye', 'Bourbon & Rye'),
-                ('Brandy & Cognac', 'Brandy & Cognac'),
-                ('Gin', 'Gin'),
-                ('Liqueurs', 'Liqueurs'),
-                ('Rum', 'Rum'),
-                ('Tequila', 'Tequila'),
-                ('Vermouth & Bitters', 'Vermouth & Bitters'),
-                ('Vodka', 'Vodka'),
-                ('Whiskey & Scotch', 'Whiskey & Scotch'),
-            )
-        ),
-        ('Mixers & Accessories', (
-                ('Cigarettes', 'Cigarettes'),
-                ('Condoms', 'Condoms'),
-                ('Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
-                ('Energy & Sports Drinks', 'Energy & Sports Drinks'),
-                ('Fruit & Garnish', 'Fruit & Garnish'),
-                ('Juice', 'Juice'),
-                ('Mixers', 'Mixers'),
-                ('Snacks', 'Snacks'),
-                ('Soda', 'Soda'),
-                ('Water', 'Water'),
-            )
-        )
-    )
-
-
-    liquor_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
-                                   verbose_name=_("Liquor Type"),
-                                   help_text="Please list ALL liquor types available at this store.")
-
-    def __unicode__(self):
-#        return u"%s %s" % (self.store, self.product)
-        return u"%s Stock" % (self.store)
+#class Stock(models.Model):
+#    store = models.ForeignKey("Store", related_name='store_stock', verbose_name=_("Store"))
+#
+#    PAGE_CHOICES = (
+#        ('Beer', (
+#                ('B Ales', 'Ales'),
+#                ('B Cider & Fruit Beers', 'Cider & Fruit Beers'),
+#                ('B Craft Beers', 'Craft Beers'),
+#                ('B Dark Beers', 'Dark Beers'),
+#                ('B Hefeweizens', 'Hefeweizens'),
+#                ('B Lagers', 'Lagers'),
+#                ('B Light Beers', 'Light Beers'),
+#                ('B Malt Beverages', 'Malt Beverages'),
+#            )
+#        ),
+#        ('Wine', (
+#                ('W Red Wine', 'Red Wine'),
+#                ('W White Wine', 'White Wine'),
+#                ('W Sparkling Wine', 'Sparkling Wine'),
+#                ('W Rose', 'Rose'),
+#            )
+#        ),
+#        ('Spirits', (
+#                ('S Bourbon & Rye', 'Bourbon & Rye'),
+#                ('S Brandy & Cognac', 'Brandy & Cognac'),
+#                ('S Gin', 'Gin'),
+#                ('S Liqueurs', 'Liqueurs'),
+#                ('S Rum', 'Rum'),
+#                ('S Tequila', 'Tequila'),
+#                ('S Vermouth & Bitters', 'Vermouth & Bitters'),
+#                ('S Vodka', 'Vodka'),
+#                ('S Whiskey & Scotch', 'Whiskey & Scotch'),
+#            )
+#        ),
+#        ('Mixers & Accessories', (
+#                ('M Cigarettes', 'Cigarettes'),
+#                ('M Condoms', 'Condoms'),
+#                ('M Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
+#                ('M Energy & Sports Drinks', 'Energy & Sports Drinks'),
+#                ('M Fruit & Garnish', 'Fruit & Garnish'),
+#                ('M Juice', 'Juice'),
+#                ('M Mixers', 'Mixers'),
+#                ('M Snacks', 'Snacks'),
+#                ('M Soda', 'Soda'),
+#                ('M Water', 'Water'),
+#            )
+#        )
+#    )
+#
+#
+#    liquor_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
+#                                   verbose_name=_("Liquor Type"),
+#                                   help_text="Please list ALL liquor types available at this store.")
+#
+#    def __unicode__(self):
+##        return u"%s %s" % (self.store, self.product)
+#        return u"%s Stock" % (self.store)
 
 class OpeningHour(models.Model):
 

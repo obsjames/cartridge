@@ -40,6 +40,12 @@ def product(request, slug, template="shop/product.html"):
     Display a product - convert the product variations to JSON as well as
     handling adding the product to either the cart or the wishlist.
     """
+
+    address = request.session['address']
+    current_store = []
+    if 'cart loaded' in request.session:
+        current_store = request.session['stores'][0]
+
     published_products = Product.objects.published(for_user=request.user)
     product = get_object_or_404(published_products, slug=slug)
     fields = [f.name for f in ProductVariation.option_fields()]
@@ -69,11 +75,13 @@ def product(request, slug, template="shop/product.html"):
                     request.session['stores'] = store
                     request.session['delivery min'] = store[0].delivery_min
 
+		    current_store = store[0]
+
                 quantity = add_product_form.cleaned_data["quantity"]
                 request.cart.add_item(add_product_form.variation, quantity)
                 recalculate_cart(request)
                 info(request, _("Item added to cart"))
-                return redirect("shop_cart")
+#                return redirect("shop_cart")
             else:
                 skus = request.wishlist
                 sku = add_product_form.variation.sku
@@ -92,7 +100,9 @@ def product(request, slug, template="shop/product.html"):
         "has_available_variations": any([v.has_price() for v in variations]),
         "related_products": product.related_products.published(
                                                       for_user=request.user),
-        "add_product_form": add_product_form
+        "add_product_form": add_product_form,
+	"address": address,
+	"stores": current_store,
     }
     templates = [u"shop/%s.html" % unicode(product.slug), template]  # new
     return render(request, templates, context)
@@ -161,6 +171,11 @@ def cart(request, template="shop/cart.html"):
 	store_slug = request.session['store slug']
     else:
 	store_slug = '/shop/'
+
+    address = request.session['address']
+    current_store = []
+    if 'cart loaded' in request.session:
+        current_store = request.session['stores'][0]
 
     cart_formset = CartItemFormSet(instance=request.cart)
     discount_form = DiscountForm(request, request.POST or None)
@@ -240,7 +255,8 @@ def cart(request, template="shop/cart.html"):
     else:
         tip_fixed = False
     context = {"cart_formset": cart_formset, "delivery_min": delivery_min, "tipform": tipform,
-               "suggested_tip": suggested_tip, "tip_fixed": tip_fixed, "store_slug": store_slug}
+               "suggested_tip": suggested_tip, "tip_fixed": tip_fixed, "store_slug": store_slug,
+	       "address": address, "stores": current_store}
     settings.use_editable()
     if (settings.SHOP_DISCOUNT_FIELD_IN_CART and
         DiscountCode.objects.active().count() > 0):
@@ -286,11 +302,11 @@ def checkout_steps(request):
             # such as the credit card fields so that they're never
             # stored anywhere.
             request.session["order"] = dict(form.cleaned_data)
-            sensitive_card_fields = ("card_number", "card_expiry_month",
-                                     "card_expiry_year", "card_ccv")
-            for field in sensitive_card_fields:
-                if field in request.session["order"]:
-                    del request.session["order"][field]
+#            sensitive_card_fields = ("card_number", "card_expiry_month",
+#                                     "card_expiry_year", "card_ccv")
+#            for field in sensitive_card_fields:
+#                if field in request.session["order"]:
+#                    del request.session["order"][field]
 
             # FIRST CHECKOUT STEP - handle shipping and discount code.
             if step == checkout.CHECKOUT_STEP_FIRST:
@@ -349,7 +365,10 @@ def checkout_steps(request):
                 step += 1
                 form = form_class(request, step, initial=initial)
 
+    current_store = []
     address = request.session['address']
+    if 'cart loaded' in request.session:
+        current_store = request.session['stores'][0]
 
     form.fields['name'] = form.fields['card_name']
     del form.fields['card_name']
@@ -389,7 +408,7 @@ def checkout_steps(request):
                "CHECKOUT_STEP_LAST": CHECKOUT_STEP_LAST,
                "step_title": step_vars["title"], "step_url": step_vars["url"],
                "steps": checkout.CHECKOUT_STEPS, "step": step, "address": address,
-               "use_stripe": stripe, "pub_key": pub_key}
+               "use_stripe": stripe, "pub_key": pub_key, "stores": current_store}
     return render(request, template, context)
 
 
@@ -415,21 +434,20 @@ def complete(request, template="shop/complete.html"):
     for i, item in enumerate(items):
         setattr(items[i], "name", names[item.sku])
 
-    settings.use_editable()
-    if settings.USE_TWILIO:
+    if 'stores' in request.session:
 
-        account_sid = settings.TWILIO_ACCOUNT_SID 
-        auth_token = settings.TWILIO_AUTH_TOKEN
-        client = TwilioRestClient(account_sid, auth_token)
- 
-        store = request.session['stores']
-        contact_number = store[0].contact_number
-        name = store[0].name
-
-        call = client.calls.create(to=contact_number,  # Any phone number
-                               from_=settings.TWILIO_NUMBER, # Must be a valid Twilio number
+#        account_sid = "ACa39f639de53fffa289d44917d24b2a60"
+#        auth_token = "f3ba20189c9e1dcc2a1059f000caba9c"
+#        client = TwilioRestClient(account_sid, auth_token)
+# 
+#        store = request.session['stores']
+#        contact_number = store[0].contact_number
+#       name = store[0].name
+#
+#        call = client.calls.create(to=contact_number,  # Any phone number
+#                               from_="+16466062502", # Must be a valid Twilio number
 #                              url="http://twimlets.com/echo?Twiml=%3CResponse%3E%3CSay%3EHi+there%2C+this+is+monkey+delivers+calling+to+notify+you+that+you+have+received+an+order%21+Please+confirm+the+order+by+clicking+the+link+in+the+email+we+just+sent+you.+Thank+you!%3C%2FSay%3E%3C%2FResponse%3E")
-                               url="http://monkeydelivers.com/stores/order_call/order_call.xml")
+#                               url="http://monkeydelivers.com/stores/order_call/order_call.xml")
 
         del request.session['stores']
     if 'cart loaded' in request.session:
