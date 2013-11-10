@@ -106,7 +106,6 @@ class Product(Displayable, Priced, RichText, AdminThumbMixin):
     categories = models.ManyToManyField("Category", blank=True,
                                         verbose_name=_("Product categories"))
 
-
     store = models.ForeignKey("Store", related_name="store_products",
                                         verbose_name=_("Store"))
 
@@ -396,6 +395,10 @@ class Category(Page, RichText):
         "products must match all specified filters, otherwise products "
         "can match any specified filter."))
 
+    delivery_min = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                       verbose_name=_("Store delivery minimum"),
+                                       help_text="30.00 for example.")
+
 #    store_name = models.ForeignKey("Store", blank=True, null=True,
 #                                   verbose_name=('Store'), related_name='store_page_link')
 
@@ -457,19 +460,19 @@ class Category(Page, RichText):
 #    delivery_min = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
 #                                       verbose_name=_("Store delivery minimum"),
 #                                       help_text="30.00 for example.")
-#    STORE_CHOICES = (
-#        ('Beer', 'Beer'),
-#        ('Wine', 'Wine'),
-#        ('Spirits', 'Spirits'),
-#        ('Mixers & Accessories', 'Mixers & Accessories'),
-#    )
+    STORE_CHOICES = (
+        ('Beer', 'Beer'),
+        ('Wine', 'Wine'),
+        ('Spirits', 'Spirits'),
+        ('Mixers & Accessories', 'Mixers & Accessories'),
+    )
 
-#    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES,
-#                                    verbose_name=_("Liqour stocked"),
-#                                    help_text="By NY State law, a store can only sell beer or spirits and wine.")
-#    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
-#                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
-#                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
+    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES, null=True, blank=True,
+                                    verbose_name=_("Liqour stocked"),
+                                    help_text="Only fill this field and the next one in for store pages.")
+    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
+                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
+                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
 
 
     class Meta:
@@ -917,7 +920,7 @@ class Sale(Discount):
                 # that exceeds the precision of the price column. In
                 # this case it's safe to ignore it and the calculation
                 # will still be applied.
-                try:
+		try:
                     update = {"sale_id": self.id,
                               "sale_price": sale_price,
                               "sale_to": self.valid_to,
@@ -997,6 +1000,7 @@ class DiscountCode(Discount):
             return amount / Decimal("100") * self.discount_percent
         return 0
 
+
     class Meta:
         verbose_name = _("Discount code")
         verbose_name_plural = _("Discount codes")
@@ -1016,32 +1020,17 @@ class Store(models.Model):
                                       code='nomatch')])
     address = models.CharField(max_length=100,
                                verbose_name=_("Physical address of store"))
-    lat = models.FloatField(verbose_name=_("Store latitude coordinate"), 
-			    help_text="Latitude and longitude coordinates are automatically added. Only edit manually in case of an error.",
-			    null=True, blank=True)
-    lon = models.FloatField(verbose_name=_("Store latitude coordinate"), 
-			    help_text="See comment for latitude coordinate.", null=True, blank=True)
+    lat = models.FloatField(verbose_name=_("Store latitude coordinate"),
+                            help_text="Latitude and longitude coordinates are automatically added. Only edit manually in case of an error.",
+                            null=True, blank=True)
+    lon = models.FloatField(verbose_name=_("Store latitude coordinate"),
+                            help_text="See comment for latitude coordinate.", null=True, blank=True)
     email = models.EmailField(verbose_name=_("Store email address"))
 #    products = models.ManyToManyField("Product", through='Stock', related_name='shops', verbose_name=_("Store products"))
 
     delivery_min = models.DecimalField(max_digits=5, decimal_places=2,
                                        verbose_name=_("Store delivery minimum"),
                                        help_text="30.00 for example.")
-
-#    STORE_CHOICES = (
-#        ('Beer', 'Beer'),
-#        ('Wine', 'Wine'),
-#        ('Spirits', 'Spirits'),
-#        ('Mixers & Accessories', 'Mixers & Accessories'),
-#    )
-#
-#    # May not need this:
-#    store_type_1 = models.CharField(max_length=20, choices=STORE_CHOICES,
-#                                    verbose_name=_("Liqour stocked"),
-#                                    help_text="By NY State law, a store can only sell beer or spirits and wine.")
-#    store_type_2 = models.CharField(max_length=20, null=True, blank=True,
-#                                    choices=STORE_CHOICES, verbose_name=_("Other liquor stocked"),
-#                                    help_text="Most stores sell wine and spirits, or beer and mixers & accessories, together.")
 
     open_for_business = models.BooleanField(default=True,
                                                 verbose_name=_("Is the store currently delivering?"),
@@ -1058,74 +1047,16 @@ class Store(models.Model):
         return self.name
 
 
-#class Stock(models.Model):
-#    store = models.ForeignKey("Store", related_name='store_stock', verbose_name=_("Store"))
-#
-#    PAGE_CHOICES = (
-#        ('Beer', (
-#                ('B Ales', 'Ales'),
-#                ('B Cider & Fruit Beers', 'Cider & Fruit Beers'),
-#                ('B Craft Beers', 'Craft Beers'),
-#                ('B Dark Beers', 'Dark Beers'),
-#                ('B Hefeweizens', 'Hefeweizens'),
-#                ('B Lagers', 'Lagers'),
-#                ('B Light Beers', 'Light Beers'),
-#                ('B Malt Beverages', 'Malt Beverages'),
-#            )
-#        ),
-#        ('Wine', (
-#                ('W Red Wine', 'Red Wine'),
-#                ('W White Wine', 'White Wine'),
-#                ('W Sparkling Wine', 'Sparkling Wine'),
-#                ('W Rose', 'Rose'),
-#            )
-#        ),
-#        ('Spirits', (
-#                ('S Bourbon & Rye', 'Bourbon & Rye'),
-#                ('S Brandy & Cognac', 'Brandy & Cognac'),
-#                ('S Gin', 'Gin'),
-#                ('S Liqueurs', 'Liqueurs'),
-#                ('S Rum', 'Rum'),
-#                ('S Tequila', 'Tequila'),
-#                ('S Vermouth & Bitters', 'Vermouth & Bitters'),
-#                ('S Vodka', 'Vodka'),
-#                ('S Whiskey & Scotch', 'Whiskey & Scotch'),
-#            )
-#        ),
-#        ('Mixers & Accessories', (
-#                ('M Cigarettes', 'Cigarettes'),
-#                ('M Condoms', 'Condoms'),
-#                ('M Cups, Ice & Accessories', 'Cups, Ice & Accessories'),
-#                ('M Energy & Sports Drinks', 'Energy & Sports Drinks'),
-#                ('M Fruit & Garnish', 'Fruit & Garnish'),
-#                ('M Juice', 'Juice'),
-#                ('M Mixers', 'Mixers'),
-#                ('M Snacks', 'Snacks'),
-#                ('M Soda', 'Soda'),
-#                ('M Water', 'Water'),
-#            )
-#        )
-#    )
-#
-#
-#    liquor_type = models.CharField(max_length=30, choices=PAGE_CHOICES,
-#                                   verbose_name=_("Liquor Type"),
-#                                   help_text="Please list ALL liquor types available at this store.")
-#
-#    def __unicode__(self):
-##        return u"%s %s" % (self.store, self.product)
-#        return u"%s Stock" % (self.store)
-
 class OpeningHour(models.Model):
 
     WEEKDAYS = [
-	(0, _("Monday")),
-	(1, _("Tuesday")),
-	(2, _("Wednesday")),
-	(3, _("Thursday")),
-	(4, _("Friday")),
-	(5, _("Saturday")),
-	(6, _("Sunday")),
+        (0, _("Monday")),
+        (1, _("Tuesday")),
+        (2, _("Wednesday")),
+        (3, _("Thursday")),
+        (4, _("Friday")),
+        (5, _("Saturday")),
+        (6, _("Sunday")),
     ]
 
     store = models.ForeignKey("Store", related_name='store_opening_hour', verbose_name=_("Store"))
