@@ -281,6 +281,20 @@ class SensitiveTextInput(TextInput):
             attrs['data-stripe'] = attrs['name']
             del attrs['name']
             del attrs['id']
+	    attrs['required'] = 'required'
+#        if 'name' in attrs['data-stripe']:
+#            attrs['class'], attrs['pattern'], attrs['x-autocompletetype'] = 'cc-cvc', '\d*', 'cc-cvc'
+	if 'number' in attrs['data-stripe']:
+#	    attrs['class'], attrs['pattern'], attrs['x-autocompletetype'] = 'cc-number', '\d{12,19}', 'cc-number'
+	    attrs['pattern'] = '\d+'
+        elif 'cvc' in attrs['data-stripe']:
+#            attrs['class'], attrs['pattern'], attrs['x-autocompletetype'] = 'cc-cvc', '\d{3,4}', 'cc-csc'
+	    attrs['pattern'] = '\d+'
+	    attrs['autocomplete'] = 'off'
+#        elif 'exp-month' in attrs['data-stripe']:
+#            attrs['class'], attrs['pattern'], attrs['x-autocompletetype'] = 'cc-exp-month', '\d*', 'cc-exp-month'
+#        elif 'exp-year' in attrs['data-stripe']:
+#            attrs['class'], attrs['pattern'], attrs['x-autocompletetype'] = 'cc-exp-year', '\d*', 'cc-exp-year'
         return attrs
 
 class SensitiveSelect(Select):
@@ -321,9 +335,13 @@ class OrderForm(FormsetForm, DiscountForm):
         widget=SensitiveSelect, required=False)
     card_ccv = forms.CharField(label=_("CVC"), help_text=_("A security code, "
         "usually the last 3 digits found on the back of your card"),
-	widget=SensitiveTextInput, required=False)  
+	widget=SensitiveTextInput, required=False)
+#    card_zip = forms.CharField(label=_("Zip code"),
+#        widget=SensitiveTextInput, required=False, 
+#	help_text=_("Registered zip code for "))
+ 
 
-    confirm_age = forms.BooleanField(label="I certify that I am over 21, and that I will present ID at the time of delivery.", initial=False)
+    confirm_age = forms.BooleanField(label="I certify that I am 21 or older, and that I will present identification at the time of delivery", initial=False)
 
 #    def build_attrs(self, extra_attrs=None, **kwargs):
 #        attrs = super()

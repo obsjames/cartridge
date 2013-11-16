@@ -27,6 +27,8 @@ from twilio.rest import TwilioRestClient
 from stores.forms import TipForm
 from stores.checkout import send_order_email, send_store_order_email
 
+import unicodedata
+
 # Set up checkout handlers.
 handler = lambda s: import_dotted_path(s) if s else lambda *args: None
 billship_handler = handler(settings.SHOP_HANDLER_BILLING_SHIPPING)
@@ -42,9 +44,10 @@ def product(request, slug, template="shop/product.html"):
     """
 
     address = request.session['address']
-    current_store = []
     if 'cart loaded' in request.session:
         current_store = request.session['stores'][0]
+    else:
+	current_store = []
 
     published_products = Product.objects.published(for_user=request.user)
     product = get_object_or_404(published_products, slug=slug)
@@ -68,6 +71,8 @@ def product(request, slug, template="shop/product.html"):
                 if 'cart loaded' in request.session:
                     current_store = Store.objects.filter(name__exact=product.store)[0]
                     if current_store != request.session['stores'][0]:
+			info(request, _("Sorry, the item cannot be added to your cart."
+					"By NY law you can't shop from two different liquor stores simultaneously."))
                         return HttpResponseRedirect('/shop/')
                 else:
                     request.session['cart loaded'] = 'cart loaded'
@@ -77,11 +82,17 @@ def product(request, slug, template="shop/product.html"):
 
 		    current_store = store[0]
 
+    		name = unicodedata.normalize('NFKD', current_store.name).encode('ascii','ignore')
+    		store_slug = '/shop/'+slugify(name)+'/'
+    		request.session['store slug'] = store_slug
+
                 quantity = add_product_form.cleaned_data["quantity"]
                 request.cart.add_item(add_product_form.variation, quantity)
                 recalculate_cart(request)
                 info(request, _("Item added to cart"))
 #                return redirect("shop_cart")
+		return redirect(store_slug)
+
             else:
                 skus = request.wishlist
                 sku = add_product_form.variation.sku
@@ -205,6 +216,7 @@ def cart(request, template="shop/cart.html"):
                 if 'cart loaded' in request.session:
                     del request.session['cart loaded']
                 info(request, _("Your cart has expired"))
+		return redirect('/shop/')
             else:
                 cart_formset = CartItemFormSet(request.POST,
                                                instance=request.cart)
@@ -241,12 +253,14 @@ def cart(request, template="shop/cart.html"):
                     del request.session['stores']
                 if 'cart loaded' in request.session:
                     del request.session['cart loaded']
+		return redirect('/shop/')
             elif total_quantity==0:
                 if 'stores' in request.session:
                     del request.session['stores']
                 if 'cart loaded' in request.session:
                     del request.session['cart loaded']
-            return redirect("shop_cart")
+#            return redirect("shop_cart")
+	    	return redirect('/shop/')
 
     ten_percent = 0.1*float(request.cart.total_price())
     suggested_tip = '%.2f' % float((ten_percent>2.0)*ten_percent+(ten_percent <=2.0)*2.0)
