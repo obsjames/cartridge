@@ -61,7 +61,7 @@ def category_processor(request, page):
     if 'cart loaded' in request.session:
         cart_loaded = True
         published_products, avail_stores, avail_store_names, stores, store_locs = cart_get_products(request, page, loc)
-	closed_store_names = []
+	closed_store_names, closed_locs = [], []
 	store_slug = request.session['store slug']	
 
     else:
@@ -73,9 +73,9 @@ def category_processor(request, page):
 
     	if 'store ids' in request.session:
 	    avail_store_ids, avail_store_names, store_locs = request.session['store ids'], request.session['store names'], request.session['store locs']
-	    closed_store_ids, closed_store_names = request.session['closed store ids'], request.session['closed store names']
+	    closed_store_ids, closed_store_names, closed_locs = request.session['closed store ids'], request.session['closed store names'], request.session['closed store locs']
 	else:
-            avail_store_ids, avail_store_names, store_locs, closed_store_ids, closed_store_names = find_stores(request, loc)
+            avail_store_ids, avail_store_names, store_locs, closed_store_ids, closed_store_names, closed_locs = find_stores(request, loc)
 
     	if avail_store_ids or closed_store_ids:
             published_products, avail_stores, stores, store_locs = get_products_and_stores(request, page, avail_store_ids, loc)
@@ -149,6 +149,6 @@ def category_processor(request, page):
     context = {'map' : map_required, 'lat' : loc[0], 'lon' : loc[1], 'store_locs': store_locs, "cart_loaded" : cart_loaded,
                "stores" : stores, "products": products, "child_categories": child_categories, "store_slug": store_slug,
 	       "form1": form1, "form2": form2, "form1_name": form1_name, "form2_name": form2_name, "address": address,
-	       "filter_form": filter_form, "closed_child_categories": closed_child_categories}
+	       "filter_form": filter_form, "closed_child_categories": closed_child_categories, 'closed_locs': closed_locs}
     return context
 

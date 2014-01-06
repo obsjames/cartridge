@@ -36,7 +36,17 @@ class AddProductForm(forms.Form):
     wishlist.
     """
 
-    quantity = forms.IntegerField(label=_("Quantity"), min_value=1)
+#    quantity = forms.IntegerField(label=_("Quantity"), min_value=1)
+
+    QUANTITY = [
+        (1, _("1")),
+        (2, _("2")),
+        (3, _("3")),
+        (4, _("4")),
+        (5, _("5")),
+        (6, _("6")),
+    ]
+    quantity = forms.TypedChoiceField(choices=QUANTITY, coerce=int, label=_("Quantity"))
     sku = forms.CharField(required=False, widget=forms.HiddenInput())
 
     def __init__(self, *args, **kwargs):

@@ -89,7 +89,7 @@ def product(request, slug, template="shop/product.html"):
                 quantity = add_product_form.cleaned_data["quantity"]
                 request.cart.add_item(add_product_form.variation, quantity)
                 recalculate_cart(request)
-                info(request, _("Item added to cart"))
+                info(request, _("Item added to cart. Anything else from %s?" % name ))
 #                return redirect("shop_cart")
 		return redirect(store_slug)
 
@@ -139,7 +139,7 @@ def wishlist(request, template="shop/wishlist.html"):
             if add_product_form.is_valid():
                 request.cart.add_item(add_product_form.variation, 1)
                 recalculate_cart(request)
-                message = _("Item added to cart")
+                message = _("Item added to cart.")
                 url = "shop_cart"
             else:
                 error = add_product_form.errors.values()[0]
@@ -196,7 +196,9 @@ def cart(request, template="shop/cart.html"):
     if request.method == 'POST':
         tipform = TipForm(request.POST)
         if tipform.is_valid():
-            tip = tipform.cleaned_data['tip']
+            tip_percent = tipform.cleaned_data['tip']
+	    tip = 0.01*float(tip_percent)*float(request.cart.total_price())
+
             billship_handler(request, tip)
 #    	    tax_handler(request, None)
             request.session['tip fixed'] = True
