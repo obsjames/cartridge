@@ -71,8 +71,8 @@ def product(request, slug, template="shop/product.html"):
                 if 'cart loaded' in request.session:
                     current_store = Store.objects.filter(name__exact=product.store)[0]
                     if current_store != request.session['stores'][0]:
-			info(request, _("Sorry, the item cannot be added to your cart."
-					"By NY law you can't shop from two different liquor stores simultaneously."))
+			info(request, _("Sorry, the item cannot be added to your cart. "
+					"By NY law you cannot shop from two different liquor stores simultaneously."))
                         return HttpResponseRedirect('/shop/')
                 else:
                     request.session['cart loaded'] = 'cart loaded'
@@ -486,6 +486,7 @@ def invoice(request, order_id, template="shop/order_invoice.html"):
         lookup["user_id"] = request.user.id
     order = get_object_or_404(Order, **lookup)
 
+    current_store = request.session['stores'][0]
     address = request.session['address']
     context = {"order": order, "address": address}
 
